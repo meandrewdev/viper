@@ -3,10 +3,14 @@
 
 package viper
 
-import "github.com/fsnotify/fsnotify"
+import (
+	"time"
 
-type watcher = fsnotify.Watcher
+	"github.com/meandrewdev/viper/batcher"
+)
+
+type watcher = batcher.Batcher
 
 func newWatcher() (*watcher, error) {
-	return fsnotify.NewWatcher()
+	return batcher.New(250 * time.Millisecond)
 }

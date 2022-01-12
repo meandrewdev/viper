@@ -454,31 +454,32 @@ func (v *Viper) WatchConfig() {
 		go func() {
 			for {
 				select {
-				case event, ok := <-watcher.Events:
+				case events, ok := <-watcher.Events:
 					if !ok { // 'Events' channel is closed
 						eventsWG.Done()
 						return
 					}
 					currentConfigFile, _ := filepath.EvalSymlinks(filename)
-					// we only care about the config file with the following cases:
-					// 1 - if the config file was modified or created
-					// 2 - if the real path to the config file changed (eg: k8s ConfigMap replacement)
-					const writeOrCreateMask = fsnotify.Write | fsnotify.Create
-					if (filepath.Clean(event.Name) == configFile &&
-						event.Op&writeOrCreateMask != 0) ||
-						(currentConfigFile != "" && currentConfigFile != realConfigFile) {
-						realConfigFile = currentConfigFile
-						err := v.ReadInConfig()
-						if err != nil {
-							log.Printf("error reading config file: %v\n", err)
+
+					for _, event := range events {
+						// we only care about the config file with the following cases:
+						// 1 - if the config file was modified or created
+						// 2 - if the real path to the config file changed (eg: k8s ConfigMap replacement)
+						const writeOrCreateMask = fsnotify.Write | fsnotify.Create
+						if (filepath.Clean(event.Name) == configFile &&
+							event.Op&writeOrCreateMask != 0) ||
+							(currentConfigFile != "" && currentConfigFile != realConfigFile) {
+							realConfigFile = currentConfigFile
+							err := v.ReadInConfig()
+							if err != nil {
+								log.Printf("error reading config file: %v\n", err)
+							}
+							if v.onConfigChange != nil {
+								v.onConfigChange(event)
+							}
+
+							break
 						}
-						if v.onConfigChange != nil {
-							v.onConfigChange(event)
-						}
-					} else if filepath.Clean(event.Name) == configFile &&
-						event.Op&fsnotify.Remove != 0 {
-						eventsWG.Done()
-						return
 					}
 
 				case err, ok := <-watcher.Errors:
