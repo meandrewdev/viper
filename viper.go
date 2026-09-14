@@ -1503,6 +1503,20 @@ func (v *Viper) Set(key string, value interface{}) {
 	deepestMap[lastKey] = value
 }
 
+// DeleteOverride removes a key from the override register so that values
+// from config files, environment, defaults, etc. become visible again.
+// Useful after writing a config file and re-reading it to avoid stale
+// in-memory overrides shadowing the freshly-read data.
+func DeleteOverride(key string) { v.DeleteOverride(key) }
+
+func (v *Viper) DeleteOverride(key string) {
+	key = v.realKey(strings.ToLower(key))
+	path := strings.Split(key, v.keyDelim)
+	lastKey := strings.ToLower(path[len(path)-1])
+	parentMap := deepSearch(v.override, path[0:len(path)-1])
+	delete(parentMap, lastKey)
+}
+
 // ReadInConfig will discover and load the configuration file from disk
 // and key/value stores, searching in one of the defined paths.
 func ReadInConfig() error { return v.ReadInConfig() }
